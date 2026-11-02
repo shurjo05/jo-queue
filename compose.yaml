@@ -1,0 +1,29 @@
+# Local development stack for jo-queue.
+#
+# M0: Redis only. The queue server and workers join in M3.
+#
+#   docker compose up -d                       # start Redis in the background
+#   docker compose exec redis redis-cli ping   # expect: PONG
+#   docker compose down                        # stop (data volume is kept)
+#   docker compose down -v                     # stop and delete the data volume
+
+services:
+  redis:
+    image: redis:7.4-alpine
+    # appendonly yes: Redis also writes every change to an append-only file
+    # (fsync about once per second), so queued jobs survive a Redis restart.
+    # Without it, Redis only takes periodic snapshots and a crash could lose
+    # recently submitted jobs.
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  redis-data:
