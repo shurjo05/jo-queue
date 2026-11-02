@@ -4,8 +4,9 @@ A small, standalone distributed background job queue written in Go, backed by
 Redis. It is built milestone by milestone as a learning project, with the goal
 of running real background work for a separate app (JoMoney).
 
-> **Status: M0 (skeleton).** Nothing runs jobs yet. This milestone sets up the
-> Go module, folder layout, local Redis, and CI.
+> **Status: M1 (in-memory queue + worker pool).** Jobs can be submitted,
+> claimed, and run by a pool of goroutines inside one process. Nothing is
+> persisted yet; Redis arrives in M2. Try `go run ./cmd/worker`.
 
 ## What it will do
 
@@ -34,9 +35,11 @@ written in any language (JoMoney's worker will be Python).
 | Path             | Purpose                                               | Arrives in |
 |------------------|-------------------------------------------------------|------------|
 | `cmd/server`     | HTTP queue server (the only Redis client)             | M3         |
-| `cmd/worker`     | Go worker: a pool of goroutines running jobs           | M3         |
+| `cmd/worker`     | Go worker (an in-process demo until M3)               | M1 / M3    |
 | `cmd/cli`        | Submit jobs and inspect status from the terminal      | M3         |
-| `internal/queue` | Core queue logic (in-memory in M1, Redis in M2)       | M1 / M2    |
+| `internal/queue` | Job, states, `Queue` interface, in-memory queue (Redis in M2) | M1 / M2 |
+| `internal/worker`| Worker pool: goroutines that claim, run, and report jobs | M1      |
+| `internal/jobs`  | Demo job handlers (`sleep`, `fail`)                   | M1         |
 | `compose.yaml`   | Local Redis (server and workers join later)           | M0         |
 | `docs/milestones`| Build notes for each milestone                        | each       |
 
@@ -51,6 +54,7 @@ cd jo-queue
 go vet ./...
 go build ./...
 go test ./...
+go run ./cmd/worker                       # in-memory demo: 20 jobs, 4 workers
 
 docker compose up -d --wait
 docker compose exec redis redis-cli ping   # PONG
@@ -58,7 +62,8 @@ docker compose down
 ```
 
 `go test -race` needs a C compiler on Windows, so CI runs the race detector on
-Linux for every push and pull request. See [docs/milestones/M0.md](docs/milestones/M0.md).
+Linux for every push and pull request. Build notes for each milestone are in
+[docs/milestones](docs/milestones).
 
 ## Roadmap
 
